@@ -83,21 +83,23 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	// Select skills to install
 	color.Green("✓ Found %d skill(s)\n\n", len(skills))
 
-	// Build options list
+	// Build options list with colored skill names
 	var options []string
+	cyan := color.New(color.FgCyan).SprintFunc()
 	for _, s := range skills {
 		if s.Desc != "" {
-			options = append(options, fmt.Sprintf("%s - %s", s.Name, s.Desc))
+			options = append(options, fmt.Sprintf("%s - %s", cyan(s.Name), s.Desc))
 		} else {
-			options = append(options, s.Name)
+			options = append(options, cyan(s.Name))
 		}
 	}
 
 	// Interactive multi-select
 	var selectedIndices []int
 	prompt := &survey.MultiSelect{
-		Message: "Select skills to install:",
-		Options: options,
+		Message:  "Select skills to install:",
+		Options:  options,
+		PageSize: 10,
 	}
 	if err := survey.AskOne(prompt, &selectedIndices); err != nil {
 		return fmt.Errorf("selection cancelled: %w", err)

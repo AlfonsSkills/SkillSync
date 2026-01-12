@@ -116,40 +116,50 @@ type SkillInfo struct {
 	Desc string // 从 SKILL.md 提取的描述
 }
 
-// ScanSkills 扫描目录，返回所有有效的 skill（包含 SKILL.md 的子目录）
+// ScanSkills scans directory recursively for valid skills (directories containing SKILL.md)
+// Supports nested structures common in monorepos (e.g., root/skills/skill-name/SKILL.md)
 func ScanSkills(dir string) ([]SkillInfo, error) {
 	var skills []SkillInfo
 
-	entries, err := os.ReadDir(dir)
+	// Recursively scan for SKILL.md files
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip .git and other hidden directories
+		if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
+			return filepath.SkipDir
+		}
+
+		// Found SKILL.md
+		if !info.IsDir() && info.Name() == "SKILL.md" {
+			// Get parent directory as skill directory
+			skillDir := filepath.Dir(path)
+
+			// Skip root directory SKILL.md (likely a template)
+			if skillDir == dir {
+				return nil
+			}
+
+			// Extract skill name from directory
+			skillName := filepath.Base(skillDir)
+
+			// Extract description
+			desc := extractSkillDescription(path)
+
+			skills = append(skills, SkillInfo{
+				Name: skillName,
+				Path: skillDir,
+				Desc: desc,
+			})
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to read directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		// 跳过隐藏目录
-		if strings.HasPrefix(entry.Name(), ".") {
-			continue
-		}
-
-		subDir := filepath.Join(dir, entry.Name())
-		skillFile := filepath.Join(subDir, "SKILL.md")
-
-		// 检查是否包含 SKILL.md
-		if _, err := os.Stat(skillFile); os.IsNotExist(err) {
-			continue
-		}
-
-		// 提取描述信息
-		desc := extractSkillDescription(skillFile)
-
-		skills = append(skills, SkillInfo{
-			Name: entry.Name(),
-			Path: subDir,
-			Desc: desc,
-		})
+		return nil, fmt.Errorf("failed to scan directory: %w", err)
 	}
 
 	return skills, nil
