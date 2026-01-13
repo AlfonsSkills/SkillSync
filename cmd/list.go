@@ -33,31 +33,31 @@ func init() {
 type LocalSkill struct {
 	Name     string
 	Path     string
-	Target   target.Target
-	Valid    bool   // Contains SKILL.md
-	Category string // Category (e.g., public, .system, or empty for root)
+	Provider target.ToolProvider // 使用 Provider 替代 Target
+	Valid    bool                // Contains SKILL.md
+	Category string              // Category (e.g., public, .system, or empty for root)
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	// Parse target filter
-	targets, err := target.ParseTargets(targetFlags)
+	// Parse target filter using Provider interface
+	providers, err := target.ParseProviders(targetFlags)
 	if err != nil {
 		return err
 	}
 
 	// Scan skills in target directories (global)
 	var allSkills []LocalSkill
-	for _, t := range targets {
-		skills, err := scanLocalSkills(t)
+	for _, p := range providers {
+		skills, err := scanLocalSkillsWithProvider(p)
 		if err != nil {
-			color.Yellow("⚠ Failed to scan %s: %v\n", t.DisplayName(), err)
+			color.Yellow("⚠ Failed to scan %s: %v\n", p.DisplayName(), err)
 			continue
 		}
 		allSkills = append(allSkills, skills...)
 	}
 
 	// Also scan project-local skills if in a git repository
-	projectSkills := scanProjectSkills(targets)
+	projectSkills := scanProjectSkillsWithProviders(providers)
 	allSkills = append(allSkills, projectSkills...)
 
 	if len(allSkills) == 0 {
@@ -65,24 +65,24 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Group by target for display
-	skillsByTarget := make(map[target.Target][]LocalSkill)
+	// Group by provider for display
+	skillsByProvider := make(map[target.ToolType][]LocalSkill)
 	for _, s := range allSkills {
-		skillsByTarget[s.Target] = append(skillsByTarget[s.Target], s)
+		skillsByProvider[s.Provider.Type()] = append(skillsByProvider[s.Provider.Type()], s)
 	}
 
 	color.Cyan("📦 Installed Skills:\n\n")
 
-	for _, t := range targets {
-		skills := skillsByTarget[t]
+	for _, p := range providers {
+		skills := skillsByProvider[p.Type()]
 		if len(skills) == 0 {
 			continue
 		}
 
 		// Target header
-		color.White("  %s (%d):\n", color.New(color.Bold).Sprint(t.DisplayName()), len(skills))
+		color.White("  %s (%d):\n", color.New(color.Bold).Sprint(p.DisplayName()), len(skills))
 
-		skillsDir, _ := t.SkillsDir()
+		skillsDir, _ := p.GlobalSkillsDir()
 		color.HiBlack("  📁 %s\n", skillsDir)
 
 		// Group by category
@@ -98,9 +98,31 @@ func runList(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Then show categorized skills
+		// Then show categorized skills (from Provider.Categories())
+		categories := p.Categories()
+		for _, cat := range categories {
+			if catSkills, ok := byCategory[cat]; ok {
+				color.HiBlack("    [%s]\n", cat)
+				for _, s := range catSkills {
+					printSkill(s)
+				}
+			}
+		}
+
+		// Show any other categories not in Provider.Categories()
 		for cat, catSkills := range byCategory {
 			if cat == "" {
+				continue
+			}
+			// Skip if already shown via Provider.Categories()
+			found := false
+			for _, c := range categories {
+				if c == cat {
+					found = true
+					break
+				}
+			}
+			if found {
 				continue
 			}
 			color.HiBlack("    [%s]\n", cat)
@@ -128,9 +150,9 @@ func printSkill(s LocalSkill) {
 	}
 }
 
-// scanLocalSkills scans skills in the specified target directory
-func scanLocalSkills(t target.Target) ([]LocalSkill, error) {
-	skillsDir, err := t.SkillsDir()
+// scanLocalSkillsWithProvider scans skills in the specified provider's directory
+func scanLocalSkillsWithProvider(p target.ToolProvider) ([]LocalSkill, error) {
+	skillsDir, err := p.GlobalSkillsDir()
 	if err != nil {
 		return nil, err
 	}
@@ -148,10 +170,11 @@ func scanLocalSkills(t target.Target) ([]LocalSkill, error) {
 
 	var skills []LocalSkill
 
-	// Known category subdirectories (need recursive scanning)
-	knownCategories := map[string]bool{
-		"public":  true,
-		".system": true,
+	// Get known category subdirectories from Provider
+	categories := p.Categories()
+	knownCategories := make(map[string]bool)
+	for _, cat := range categories {
+		knownCategories[cat] = true
 	}
 
 	for _, entry := range entries {
@@ -165,7 +188,7 @@ func scanLocalSkills(t target.Target) ([]LocalSkill, error) {
 		// Check if it's a known category directory
 		if knownCategories[name] {
 			// Recursively scan category directory
-			catSkills, err := scanCategoryDir(entryPath, name, t)
+			catSkills, err := scanCategoryDirWithProvider(entryPath, name, p)
 			if err != nil {
 				continue
 			}
@@ -182,7 +205,7 @@ func scanLocalSkills(t target.Target) ([]LocalSkill, error) {
 			skills = append(skills, LocalSkill{
 				Name:     name,
 				Path:     entryPath,
-				Target:   t,
+				Provider: p,
 				Valid:    valid,
 				Category: "",
 			})
@@ -192,8 +215,8 @@ func scanLocalSkills(t target.Target) ([]LocalSkill, error) {
 	return skills, nil
 }
 
-// scanCategoryDir scans a category subdirectory
-func scanCategoryDir(dir, category string, t target.Target) ([]LocalSkill, error) {
+// scanCategoryDirWithProvider scans a category subdirectory
+func scanCategoryDirWithProvider(dir, category string, p target.ToolProvider) ([]LocalSkill, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -218,11 +241,84 @@ func scanCategoryDir(dir, category string, t target.Target) ([]LocalSkill, error
 		skills = append(skills, LocalSkill{
 			Name:     name,
 			Path:     entryPath,
-			Target:   t,
+			Provider: p,
 			Valid:    valid,
 			Category: category,
 		})
 	}
 
 	return skills, nil
+}
+
+// scanProjectSkillsWithProviders scans project-local skills for the given providers
+func scanProjectSkillsWithProviders(providers []target.ToolProvider) []LocalSkill {
+	var projectSkills []LocalSkill
+
+	// Try to find project root (silently fail if not in a git repo)
+	projectRoot, err := findProjectRoot()
+	if err != nil {
+		return nil
+	}
+
+	for _, p := range providers {
+		// Get project-local skills directory using Provider interface
+		skillsDir := p.LocalSkillsDir(projectRoot)
+
+		// Check if directory exists
+		if _, err := os.Stat(skillsDir); os.IsNotExist(err) {
+			continue
+		}
+
+		// Read directory contents
+		entries, err := os.ReadDir(skillsDir)
+		if err != nil {
+			continue
+		}
+
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+
+			name := entry.Name()
+			if strings.HasPrefix(name, ".") {
+				continue
+			}
+
+			entryPath := filepath.Join(skillsDir, name)
+			valid := skill.ValidateSkillDir(entryPath) == nil
+
+			projectSkills = append(projectSkills, LocalSkill{
+				Name:     name,
+				Path:     entryPath,
+				Provider: p,
+				Valid:    valid,
+				Category: fmt.Sprintf("project:%s", filepath.Base(projectRoot)),
+			})
+		}
+	}
+
+	return projectSkills
+}
+
+// findProjectRoot searches for project root by looking for .git directory
+func findProjectRoot() (string, error) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	dir := currentDir
+	for {
+		gitPath := filepath.Join(dir, ".git")
+		if info, err := os.Stat(gitPath); err == nil && info.IsDir() {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("not in a git repository")
+		}
+		dir = parent
+	}
 }

@@ -3,13 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-
-	"github.com/AlfonsSkills/AgentSync/internal/target"
 )
 
 var (
@@ -25,77 +23,84 @@ var removeCmd = &cobra.Command{
 Examples:
   agentsync remove my-skill
   agentsync remove my-skill --target gemini
-  agentsync remove my-skill --local  # Remove from project directories`,
+  agentsync remove my-skill --local`,
 	Args: cobra.ExactArgs(1),
 	RunE: runRemove,
 }
 
 func init() {
 	rootCmd.AddCommand(removeCmd)
-	removeCmd.Flags().BoolVarP(&localRemove, "local", "l", false, "Remove from project-local skills directories")
+	removeCmd.Flags().BoolVarP(&localRemove, "local", "l", false, "Remove from project-local skills directories only")
 }
 
 func runRemove(cmd *cobra.Command, args []string) error {
 	skillName := args[0]
 
-	// Handle local removal
-	if localRemove {
-		return runLocalRemove(skillName)
-	}
+	color.Cyan("🗑️  Preparing to remove: %s\n\n", skillName)
 
-	// Parse target tools for global removal
-	targets, err := target.ParseTargets(targetFlags)
+	// Step 1: Resolve target providers (interactive if not specified)
+	providers, _, err := resolveTargetProviders(targetFlags)
 	if err != nil {
 		return err
 	}
 
-	// Build target names for display
-	var targetNames []string
-	for _, t := range targets {
-		targetNames = append(targetNames, t.DisplayName())
+	// Step 2: Resolve remove scope (global/local)
+	removeGlobal, removeLocal, projectRoot, err := resolveRemoveScope(localRemove)
+	if err != nil {
+		return err
 	}
 
-	// Always require confirmation with target list
-	color.Yellow("⚠ This will remove '%s' from: %s\n", skillName, strings.Join(targetNames, ", "))
+	// Step 3: Show removal preview
+	showRemovePreview(skillName, providers, removeGlobal, removeLocal, projectRoot)
 
-	var confirm bool
-	prompt := &survey.Confirm{
-		Message: "Are you sure you want to continue?",
+	// Step 4: Confirm removal
+	var confirmRemove bool
+	confirmPrompt := &survey.Confirm{
+		Message: "Proceed with removal?",
 		Default: false,
 	}
-	if err := survey.AskOne(prompt, &confirm); err != nil {
+	if err := survey.AskOne(confirmPrompt, &confirmRemove); err != nil {
 		return fmt.Errorf("cancelled: %w", err)
 	}
-	if !confirm {
-		color.Yellow("Cancelled\n")
+	if !confirmRemove {
+		color.Yellow("Removal cancelled\n")
 		return nil
 	}
 
-	color.Cyan("🗑️  Removing skill: %s\n", skillName)
-
+	// Step 5: Execute removal
+	color.Cyan("\n🗑️  Removing skill: %s\n", skillName)
 	removedCount := 0
 
-	for _, t := range targets {
-		// Use InstallDir instead of SkillsDir for correct path (e.g., Codex uses public/)
-		skillsDir, err := t.InstallDir()
-		if err != nil {
-			continue
+	for _, p := range providers {
+		// Remove from global directory
+		if removeGlobal {
+			globalDir, err := p.GlobalInstallDir()
+			if err == nil {
+				skillPath := filepath.Join(globalDir, skillName)
+				if _, err := os.Stat(skillPath); os.IsNotExist(err) {
+					color.Yellow("   ⚠ %s: not found\n", p.DisplayName())
+				} else if err := os.RemoveAll(skillPath); err != nil {
+					color.Red("   ❌ %s: failed to remove - %v\n", p.DisplayName(), err)
+				} else {
+					color.Green("   ✓ Removed from %s\n", p.DisplayName())
+					removedCount++
+				}
+			}
 		}
 
-		skillPath := skillsDir + "/" + skillName
-
-		if _, err := os.Stat(skillPath); os.IsNotExist(err) {
-			color.Yellow("   ⚠ %s: not found\n", t.DisplayName())
-			continue
+		// Remove from project directory
+		if removeLocal && projectRoot != "" {
+			localDir := p.LocalSkillsDir(projectRoot)
+			skillPath := filepath.Join(localDir, skillName)
+			if _, err := os.Stat(skillPath); os.IsNotExist(err) {
+				color.Yellow("   ⚠ .%s/skills: not found\n", p.Type())
+			} else if err := os.RemoveAll(skillPath); err != nil {
+				color.Red("   ❌ .%s/skills: failed to remove - %v\n", p.Type(), err)
+			} else {
+				color.Green("   ✓ Removed from .%s/skills\n", p.Type())
+				removedCount++
+			}
 		}
-
-		if err := os.RemoveAll(skillPath); err != nil {
-			color.Red("   ❌ %s: failed to remove - %v\n", t.DisplayName(), err)
-			continue
-		}
-
-		color.Green("   ✓ Removed from %s\n", t.DisplayName())
-		removedCount++
 	}
 
 	if removedCount > 0 {
