@@ -57,6 +57,27 @@ skillsync install https://gitlab.com/user/skill-repo.git
 skillsync list
 skillsync list --target gemini
 
+# Example output:
+#   📦 Installed Skills:
+#
+#     Gemini CLI (1):
+#     📁 ~/.gemini/skills
+#       ✓ devops
+#
+#     Claude Code (2):
+#     📁 ~/.claude/skills
+#       ✓ devops
+#       [project:MyProject]
+#         ✓ docx
+#
+#     Codex CLI (5):
+#     📁 ~/.codex/skills
+#       ✓ gh-address-comments
+#       [public]
+#         ✓ devops
+#       [.system]
+#         ✓ skill-creator
+
 # Remove skill
 skillsync remove skill-name
 skillsync remove skill-name --target claude

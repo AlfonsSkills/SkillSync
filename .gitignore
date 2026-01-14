@@ -1,7 +1,10 @@
 # Binaries
-agentsync
-agentsync.exe
+skillsync
+skillsync.exe
 build/
+
+# Agent skills (project-specific)
+.agent/
 
 # Go
 *.exe
