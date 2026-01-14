@@ -70,6 +70,7 @@ agentsync remove skill-name --local  # Remove from project directories
 | Gemini CLI | `~/.gemini/skills/` | `-t gemini` |
 | Claude Code | `~/.claude/skills/` | `-t claude` |
 | Codex CLI | `~/.codex/skills/public/` | `-t codex` |
+| Antigravity IDE | `~/.gemini/antigravity/skills/` | `-t antigravity` |
 
 ## Skill Repository Requirements
 

@@ -70,6 +70,7 @@ agentsync remove skill-name --local  # 从项目目录移除
 | Gemini CLI | `~/.gemini/skills/` | `-t gemini` |
 | Claude Code | `~/.claude/skills/` | `-t claude` |
 | Codex CLI | `~/.codex/skills/public/` | `-t codex` |
+| Antigravity IDE | `~/.gemini/antigravity/skills/` | `-t antigravity` |
 
 ## Skill 仓库要求
 
