@@ -51,16 +51,16 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           go build -ldflags "-s -w \
-            -X github.com/AlfonsSkills/AgentSync/cmd.Version=${{ steps.version.outputs.VERSION }} \
-            -X github.com/AlfonsSkills/AgentSync/cmd.GitCommit=${{ github.sha }} \
-            -X github.com/AlfonsSkills/AgentSync/cmd.BuildTime=$(date -u '+%Y-%m-%d_%H:%M:%S')" \
-            -o agentsync-${{ matrix.suffix }} .
+            -X github.com/AlfonsSkills/SkillSync/cmd.Version=${{ steps.version.outputs.VERSION }} \
+            -X github.com/AlfonsSkills/SkillSync/cmd.GitCommit=${{ github.sha }} \
+            -X github.com/AlfonsSkills/SkillSync/cmd.BuildTime=$(date -u '+%Y-%m-%d_%H:%M:%S')" \
+            -o skillsync-${{ matrix.suffix }} .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agentsync-${{ matrix.suffix }}
-          path: agentsync-${{ matrix.suffix }}
+          name: skillsync-${{ matrix.suffix }}
+          path: skillsync-${{ matrix.suffix }}
 
   release:
     needs: build
