@@ -38,21 +38,21 @@ To create a skill:
 1. Create a folder for your skill in one of the skill directories  
 2. Add a `SKILL.md` file inside that folder
 
-```
+```text
 .agent/skills/
-â””â”€â”€â”€ my-skill/
-    â””â”€â”€â”€ SKILL.md
+└── my-skill/
+    └── SKILL.md
 ```
 
 Every skill needs a `SKILL.md` file with YAML frontmatter at the top:
 
-```
+```yaml
 ---
 name: my-skill
 description: Helps with a specific task. Use when you need to do X or Y.
 ---
 
-# My Skill
+#My Skill
 
 Detailed instructions for the agent go here.
 
@@ -79,12 +79,12 @@ Tip: Write your description in third person and include keywords that help the a
 
 While `SKILL.md` is the only required file, you can include additional resources:
 
-```
+```text
 .agent/skills/my-skill/
-├─── SKILL.md       # Main instructions (required)
-├─── scripts/       # Helper scripts (optional)
-├─── examples/      # Reference implementations (optional)
-└─── resources/     # Templates and other assets (optional)
+├── SKILL.md       # Main instructions (required)
+├── scripts/       # Helper scripts (optional)
+├── examples/      # Reference implementations (optional)
+└── resources/     # Templates and other assets (optional)
 ```
 
 The agent can read these files when following your skill's instructions.
@@ -121,7 +121,7 @@ For complex skills, add a section that helps the agent choose the right approach
 
 Here's a simple skill that helps the agent review code:
 
-```
+```yaml
 ---
 name: code-review
 description: Reviews code changes for bugs, style issues, and best practices. Use when reviewing PRs or checking code quality.

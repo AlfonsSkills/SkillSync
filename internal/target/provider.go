@@ -12,6 +12,13 @@ const (
 	ToolCopilot     ToolType = "copilot"
 	ToolCursor      ToolType = "cursor"
 	ToolOpencode    ToolType = "opencode"
+	ToolCline       ToolType = "cline"
+	ToolGoose       ToolType = "goose"
+	ToolCrush       ToolType = "crush"
+	ToolDroid       ToolType = "droid"
+	ToolKiloCode    ToolType = "kilocode"
+	ToolRooCode     ToolType = "roocode"
+	ToolVSCode      ToolType = "vscode"
 )
 
 // String 返回工具类型的字符串表示
