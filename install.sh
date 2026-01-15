@@ -99,7 +99,15 @@ main() {
     verify
 
     echo ""
-    info "Run 'skillsync --help' to get started"
+
+    # Handle post-install commands (e.g., install <repo>)
+    if [ "$1" = "install" ] && [ -n "$2" ]; then
+        echo ""
+        info "Installing skills from $2..."
+        "${INSTALL_DIR}/${BINARY_NAME}" install "$2" "${@:3}"
+    else
+        info "Run 'skillsync --help' to get started"
+    fi
 }
 
-main
+main "$@"

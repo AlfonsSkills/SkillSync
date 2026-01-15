@@ -40,6 +40,16 @@
 curl -fsSL https://raw.githubusercontent.com/AlfonsSkills/SkillSync/main/install.sh | bash
 ```
 
+**一键安装 Skill 仓库：**
+
+```bash
+# 安装 SkillSync 并同时安装指定的 Skill 仓库
+curl -fsSL https://raw.githubusercontent.com/AlfonsSkills/SkillSync/main/install.sh | bash -s -- install AlfonsSkills/skills
+
+# 指定目标工具
+curl -fsSL https://raw.githubusercontent.com/AlfonsSkills/SkillSync/main/install.sh | bash -s -- install AlfonsSkills/skills -t claude,gemini
+```
+
 ### 从 Release 下载
 
 从 [Releases](https://github.com/AlfonsSkills/SkillSync/releases) 下载最新版本。

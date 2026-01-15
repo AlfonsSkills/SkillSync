@@ -40,6 +40,16 @@
 curl -fsSL https://raw.githubusercontent.com/AlfonsSkills/SkillSync/main/install.sh | bash
 ```
 
+**One-liner with skill installation:**
+
+```bash
+# Install SkillSync and a skill repository in one command
+curl -fsSL https://raw.githubusercontent.com/AlfonsSkills/SkillSync/main/install.sh | bash -s -- install AlfonsSkills/skills
+
+# With target tool specification
+curl -fsSL https://raw.githubusercontent.com/AlfonsSkills/SkillSync/main/install.sh | bash -s -- install AlfonsSkills/skills -t claude,gemini
+```
+
 ### From Release
 
 Download the latest binary from [Releases](https://github.com/AlfonsSkills/SkillSync/releases).
