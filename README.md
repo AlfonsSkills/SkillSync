@@ -36,6 +36,14 @@
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew install AlfonsSkills/tap/skillsync
+```
+
+### Script
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AlfonsSkills/SkillSync/main/install.sh | bash
 ```

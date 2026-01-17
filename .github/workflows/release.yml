@@ -107,3 +107,65 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # 自动更新 Homebrew Formula
+      - name: Update Homebrew Formula
+        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          # 计算各平台二进制文件的 SHA256
+          SHA_DARWIN_ARM64=$(shasum -a 256 dist/skillsync-darwin-arm64 | cut -d ' ' -f 1)
+          SHA_DARWIN_AMD64=$(shasum -a 256 dist/skillsync-darwin-amd64 | cut -d ' ' -f 1)
+          SHA_LINUX_ARM64=$(shasum -a 256 dist/skillsync-linux-arm64 | cut -d ' ' -f 1)
+          SHA_LINUX_AMD64=$(shasum -a 256 dist/skillsync-linux-amd64 | cut -d ' ' -f 1)
+
+          # 生成 Formula 文件
+          cat > skillsync.rb << EOF
+          class Skillsync < Formula
+            desc "Sync skills from Git repositories to 14+ AI coding tools"
+            homepage "https://github.com/AlfonsSkills/SkillSync"
+            version "${VERSION#v}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/AlfonsSkills/SkillSync/releases/download/${VERSION}/skillsync-darwin-arm64"
+                sha256 "${SHA_DARWIN_ARM64}"
+              else
+                url "https://github.com/AlfonsSkills/SkillSync/releases/download/${VERSION}/skillsync-darwin-amd64"
+                sha256 "${SHA_DARWIN_AMD64}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/AlfonsSkills/SkillSync/releases/download/${VERSION}/skillsync-linux-arm64"
+                sha256 "${SHA_LINUX_ARM64}"
+              else
+                url "https://github.com/AlfonsSkills/SkillSync/releases/download/${VERSION}/skillsync-linux-amd64"
+                sha256 "${SHA_LINUX_AMD64}"
+              end
+            end
+
+            def install
+              bin.install Dir["skillsync*"].first => "skillsync"
+            end
+
+            test do
+              system "#{bin}/skillsync", "--version"
+            end
+          end
+          EOF
+
+          # 克隆 homebrew-tap 仓库并更新
+          git clone https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/AlfonsSkills/homebrew-tap.git
+          mkdir -p homebrew-tap/Formula
+          mv skillsync.rb homebrew-tap/Formula/
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/skillsync.rb
+          git commit -m "Update skillsync to ${VERSION}"
+          git push
+
