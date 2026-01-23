@@ -1,5 +1,8 @@
 # SkillSync
 
+> **Archived / Read-only**
+> 本项目已归档并停止维护，推荐使用 [skills.sh](https://skills.sh/)。
+
 [![CI](https://github.com/AlfonsSkills/SkillSync/actions/workflows/ci.yml/badge.svg)](https://github.com/AlfonsSkills/SkillSync/actions/workflows/ci.yml)
 [![Release](https://github.com/AlfonsSkills/SkillSync/actions/workflows/release.yml/badge.svg)](https://github.com/AlfonsSkills/SkillSync/releases)
 [![GitHub release](https://img.shields.io/github/v/release/AlfonsSkills/SkillSync)](https://github.com/AlfonsSkills/SkillSync/releases/latest)
